@@ -152,7 +152,7 @@ export class Game {
     }
 
     const ballY = this.field.y + Math.random() * this.field.height
-    this.ball = new Ball(center.x, ballY, this.getColors())
+    this.ball = new Ball(center.x, ballY, this.getColors(), this.sceneType)
     this.ball.radius = GAME_PARAMS.ballRadius * scale * eScale
 
     this.scoreManager = new ScoreManager(this.winScore)
