@@ -2,7 +2,7 @@
 export type GameState = 'modeSelect' | 'charSelect' | 'settings' | 'playing' | 'paused' | 'goal' | 'gameover'
 
 // 人物类型
-export type CharacterType = 'pixel' | 'circle' | 'robot'
+export type CharacterType = 'pixel' | 'circle' | 'robot' | 'ninja' | 'cat' | 'alien' | 'stickman'
 
 // 玩家操控方式
 export type PlayerMode = 'keyboard' | 'mouse'
@@ -11,7 +11,7 @@ export type PlayerMode = 'keyboard' | 'mouse'
 export type GameModeType = 'duo' | 'trio' | 'ai'
 
 // 场景类型
-export type SceneType = 'classic' | 'cyber'
+export type SceneType = 'classic' | 'cyber' | 'pixel' | 'pop'
 
 // 场地大小
 export type FieldSize = 'small' | 'standard' | 'large'

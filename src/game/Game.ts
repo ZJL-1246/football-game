@@ -1,5 +1,5 @@
 import type { GameState, Team, CharacterType, GameModeType, SceneType, FieldSize, ColorConfig } from '../types'
-import { GAME_PARAMS, FIELD_RATIO, FIELD_MARGIN, CHARACTER_TYPES, SCENE_TYPES, FIELD_SIZES, CLASSIC_COLORS, CYBER_COLORS } from './constants'
+import { GAME_PARAMS, FIELD_RATIO, FIELD_MARGIN, CHARACTER_TYPES, SCENE_TYPES, FIELD_SIZES, CLASSIC_COLORS, CYBER_COLORS, PIXEL_COLORS, POP_COLORS } from './constants'
 import { Field } from './Field'
 import { Player } from './Player'
 import { Ball } from './Ball'
@@ -33,8 +33,8 @@ export class Game {
   playerSpeed: number
   gameMode: GameModeType = 'duo'
   player1Char: CharacterType = 'pixel'
-  player2Char: CharacterType = 'circle'
-  player3Char: CharacterType = 'robot'
+  player2Char: CharacterType = 'pixel'
+  player3Char: CharacterType = 'pixel'
   sceneType: SceneType = 'classic'
   fieldSize: FieldSize = 'standard'
   private aiController: AIController | null = null
@@ -65,7 +65,12 @@ export class Game {
   }
 
   private getColors(): ColorConfig {
-    return this.sceneType === 'cyber' ? CYBER_COLORS : CLASSIC_COLORS
+    switch (this.sceneType) {
+      case 'cyber': return CYBER_COLORS
+      case 'pixel': return PIXEL_COLORS
+      case 'pop':   return POP_COLORS
+      default:      return CLASSIC_COLORS
+    }
   }
 
   private getEntityScale(): number {
@@ -146,7 +151,8 @@ export class Game {
       player.radius = pRadius
     }
 
-    this.ball = new Ball(center.x, center.y, this.getColors())
+    const ballY = this.field.y + Math.random() * this.field.height
+    this.ball = new Ball(center.x, ballY, this.getColors())
     this.ball.radius = GAME_PARAMS.ballRadius * scale * eScale
 
     this.scoreManager = new ScoreManager(this.winScore)
@@ -165,26 +171,29 @@ export class Game {
 
     if (this.state === 'charSelect') {
       // 人物选择页
-      const charBtnSize = 60
-      const charGap = 14
+      const charBtnSize = 50
+      const charGap = 10
+      const playerSectionHeight = 110  // 每个玩家区域的高度
+      const charCy = cy - 40
 
       // 玩家1
-      const c1x = cx - 160
-      const c1y = cy - 30
+      const c1x = cx - 200
+      const c1y = charCy - 50
       CHARACTER_TYPES.forEach((c, i) => {
         this.menuButtons.push({ x: c1x + i * (charBtnSize + charGap), y: c1y, width: charBtnSize, height: charBtnSize, label: c.label, value: c.type, group: 'char1' })
       })
 
       // 玩家2
-      const c2x = cx + 50
+      const c2x = cx - 200
+      const c2y = c1y + playerSectionHeight
       CHARACTER_TYPES.forEach((c, i) => {
-        this.menuButtons.push({ x: c2x + i * (charBtnSize + charGap), y: c1y, width: charBtnSize, height: charBtnSize, label: c.label, value: c.type, group: 'char2' })
+        this.menuButtons.push({ x: c2x + i * (charBtnSize + charGap), y: c2y, width: charBtnSize, height: charBtnSize, label: c.label, value: c.type, group: 'char2' })
       })
 
       // 玩家3（三人模式）
       if (this.gameMode === 'trio') {
-        const c3x = cx - 82
-        const c3y = c1y + charBtnSize + 50
+        const c3x = cx - 200
+        const c3y = c2y + playerSectionHeight
         CHARACTER_TYPES.forEach((c, i) => {
           this.menuButtons.push({ x: c3x + i * (charBtnSize + charGap), y: c3y, width: charBtnSize, height: charBtnSize, label: c.label, value: c.type, group: 'char3' })
         })
@@ -192,12 +201,15 @@ export class Game {
 
     } else if (this.state === 'settings') {
       // 游戏设置页
-      const rowGap = 55
+      const rowGap = 65
+      const settingsCy = cy - 40
 
       // 场景
-      const sceneY = cy - 60
+      const sceneY = settingsCy - 48
+      const sceneTotalWidth = SCENE_TYPES.length * (btnW + gap) - gap
+      const sceneStartX = cx - sceneTotalWidth / 2 + btnW / 2
       SCENE_TYPES.forEach((s, i) => {
-        this.menuButtons.push({ x: cx - 40 + i * (btnW + gap), y: sceneY, width: btnW, height: btnH, label: s.label, value: s.type, group: 'scene' })
+        this.menuButtons.push({ x: sceneStartX + i * (btnW + gap), y: sceneY, width: btnW, height: btnH, label: s.label, value: s.type, group: 'scene' })
       })
 
       // 场地大小
@@ -235,17 +247,18 @@ export class Game {
 
       // 模式选择页
       if (this.state === 'modeSelect') {
-        if (this.hitBtn(mx, my, cx - 120, cy - 30, 240, 60)) {
+        const modeCy = cy - 40
+        if (this.hitBtn(mx, my, cx - 120, modeCy - 30, 240, 60)) {
           this.gameMode = 'duo'
           this.state = 'charSelect'
           this.setupMenuButtons()
         }
-        if (this.hitBtn(mx, my, cx - 120, cy + 50, 240, 60)) {
+        if (this.hitBtn(mx, my, cx - 120, modeCy + 50, 240, 60)) {
           this.gameMode = 'trio'
           this.state = 'charSelect'
           this.setupMenuButtons()
         }
-        if (this.hitBtn(mx, my, cx - 120, cy + 130, 240, 60)) {
+        if (this.hitBtn(mx, my, cx - 120, modeCy + 130, 240, 60)) {
           this.gameMode = 'ai'
           this.state = 'charSelect'
           this.setupMenuButtons()
@@ -262,13 +275,17 @@ export class Game {
             else if (btn.group === 'char3') this.player3Char = btn.value as CharacterType
           }
         }
+        // 计算按钮位置
+        const charCy = cy - 40
+        const charInfoY = this.gameMode === 'trio' ? charCy + 200 : charCy + 150
+        const charBtnY = charInfoY + 30
         // 下一步按钮
-        if (this.hitBtn(mx, my, cx - 70, cy + 160, 140, 40)) {
+        if (this.hitBtn(mx, my, cx - 70, charBtnY, 140, 40)) {
           this.state = 'settings'
           this.setupMenuButtons()
         }
         // 返回
-        if (this.hitBtn(mx, my, cx - 60, cy + 210, 120, 25)) {
+        if (this.hitBtn(mx, my, cx - 60, charBtnY + 40, 120, 25)) {
           this.state = 'modeSelect'
           this.setupMenuButtons()
         }
@@ -292,12 +309,13 @@ export class Game {
             }
           }
         }
+        const settingsCy = cy - 40
         // 开始游戏按钮
-        if (this.hitBtn(mx, my, cx - 80, cy + 170, 160, 45)) {
+        if (this.hitBtn(mx, my, cx - 80, settingsCy + 195, 160, 45)) {
           this.start()
         }
         // 返回
-        if (this.hitBtn(mx, my, cx - 60, cy + 225, 120, 25)) {
+        if (this.hitBtn(mx, my, cx - 60, settingsCy + 250, 120, 25)) {
           this.state = 'charSelect'
           this.setupMenuButtons()
         }
@@ -344,11 +362,9 @@ export class Game {
         this.goalScored = false
         if (this.scoreManager.isGameOver()) {
           this.state = 'gameover'
-          console.log('→ gameover')
         } else {
           this.resetPositions()
           this.state = 'playing'
-          console.log('→ playing, reset done')
         }
       }
       return
@@ -377,10 +393,10 @@ export class Game {
 
     // 玩家2：AI 或 键盘
     if (this.gameMode === 'ai' && this.aiController) {
-      const aiInput = this.aiController.update(1, this.players[1], this.ball, this.field, this.field.rightGoal, this.field.leftGoal)
+      const aiInput = this.aiController.update(1, this.players[1], this.ball, this.field, this.field.leftGoal, this.field.rightGoal)
       this.players[1].vx = aiInput.vx * speed
       this.players[1].vy = aiInput.vy * speed
-      if (aiInput.kick) this.tryKick(this.players[1])
+      if (aiInput.kick) this.tryKick(this.players[1], aiInput.kickTarget ?? undefined)
     } else {
       const p2Input = this.inputManager.getPlayerInput('player2')
       this.players[1].vx = p2Input.vx * speed
@@ -398,16 +414,34 @@ export class Game {
     }
   }
 
-  private tryKick(player: Player): void {
+  private tryKick(player: Player, target?: { x: number; y: number }): void {
     const dx = this.ball.x - player.x
     const dy = this.ball.y - player.y
     const dist = Math.sqrt(dx * dx + dy * dy)
 
     if (dist < player.radius + this.ball.radius + 10) {
-      const force = player.kick(this.ball.x, this.ball.y)
-      this.ball.applyForce(force.fx, force.fy)
-      this.ball.justKicked = 3 // 踢球后跳过3帧碰撞跟随
-      this.ball.lastKickedByTeam = player.team // 记录踢球队伍
+      if (!player.canKick()) return
+
+      // 踢球特效和冷却（通过 player.kick 触发）
+      const defaultForce = player.kick(this.ball.x, this.ball.y)
+
+      // 如果有目标（AI模式），朝目标踢；否则用默认方向
+      let forceX = defaultForce.fx
+      let forceY = defaultForce.fy
+      if (target) {
+        const tdx = target.x - this.ball.x
+        const tdy = target.y - this.ball.y
+        const tDist = Math.sqrt(tdx * tdx + tdy * tdy)
+        if (tDist > 0) {
+          const kickForce = GAME_PARAMS.kickForce
+          forceX = (tdx / tDist) * kickForce
+          forceY = (tdy / tDist) * kickForce
+        }
+      }
+
+      this.ball.applyForce(forceX, forceY)
+      this.ball.justKicked = 3
+      this.ball.lastKickedByTeam = player.team
       this.soundManager.playKick()
     }
   }
@@ -448,11 +482,11 @@ export class Game {
     this.goalFlash = 1
     this.goalScored = true
     this.soundManager.playGoal()
-    console.log(`GOAL! ${team} scored, timer=${this.goalTimer}, gameOver=${this.scoreManager.isGameOver()}`)
 
-    // 立即把球移到场地中心，防止重复触发
+    // 立即把球移到中线随机位置，防止重复触发
     const center = this.field.getCenter()
-    this.ball.reset(center.x, center.y)
+    const ballY = this.field.y + Math.random() * this.field.height
+    this.ball.reset(center.x, ballY)
   }
 
   private resetPositions(): void {
@@ -469,7 +503,8 @@ export class Game {
       this.players[1].reset(center.x + playerOffset, center.y)
     }
 
-    this.ball.reset(center.x, center.y)
+    const ballY = this.field.y + Math.random() * this.field.height
+    this.ball.reset(center.x, ballY)
   }
 
   // ============ 渲染 ============
@@ -491,6 +526,12 @@ export class Game {
 
     if (this.state !== 'modeSelect' && this.state !== 'charSelect' && this.state !== 'settings') {
       this.drawHUD(ctx)
+    }
+
+    // 菜单页面背景虚化
+    if (this.state === 'modeSelect' || this.state === 'charSelect' || this.state === 'settings') {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'
+      ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
     }
 
     if (this.state === 'goal') this.drawGoalText(ctx)
@@ -678,7 +719,7 @@ export class Game {
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
 
     const cx = this.canvas.width / 2
-    const cy = this.canvas.height / 2
+    const cy = this.canvas.height / 2 - 40
 
     ctx.fillStyle = '#FFFFFF'
     ctx.font = 'bold 48px "Segoe UI", "Microsoft YaHei", sans-serif'
@@ -742,87 +783,98 @@ export class Game {
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
 
     const cx = this.canvas.width / 2
-    const cy = this.canvas.height / 2
+    const cy = this.canvas.height / 2 - 40
     const colors = this.getColors()
     const modeName = this.gameMode === 'trio' ? '三人对战' : this.gameMode === 'ai' ? '人机对战' : '双人对战'
+    const playerSectionHeight = 110
 
     // 标题
     ctx.fillStyle = '#FFFFFF'
-    ctx.font = 'bold 36px "Segoe UI", "Microsoft YaHei", sans-serif'
+    ctx.font = 'bold 40px "Segoe UI", "Microsoft YaHei", sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText(`选择角色 — ${modeName}`, cx, cy - 100)
+    ctx.fillText(`⚽ ${modeName} — 选择角色`, cx, cy - 130)
 
-    // 玩家1
+    // 玩家1 红队
+    const p1LabelY = cy - 85
     ctx.fillStyle = colors.player1
-    ctx.font = 'bold 15px "Segoe UI", "Microsoft YaHei", sans-serif'
-    ctx.fillText('玩家1 红队 (键盘)', cx - 82, cy - 65)
+    ctx.font = 'bold 16px "Segoe UI", "Microsoft YaHei", sans-serif'
+    ctx.textAlign = 'left'
+    ctx.fillText('🔴 玩家1 红队 (键盘)', cx - 200, p1LabelY)
     for (const btn of this.menuButtons.filter(b => b.group === 'char1')) {
       this.drawCharButton(ctx, btn, btn.value === this.player1Char, colors.player1)
-      Player.drawPreview(ctx, btn.x, btn.y + 2, 18, btn.value as CharacterType, 'red', colors)
+      Player.drawPreview(ctx, btn.x, btn.y + 2, 16, btn.value as CharacterType, 'red', colors)
     }
 
     // 玩家2 / AI
+    const p2LabelY = p1LabelY + playerSectionHeight
     if (this.gameMode === 'ai') {
-      // AI 模式：显示 AI 角色选择
       ctx.fillStyle = colors.player2
-      ctx.font = 'bold 15px "Segoe UI", "Microsoft YaHei", sans-serif'
-      ctx.fillText('AI 蓝队', cx + 118, cy - 65)
+      ctx.font = 'bold 16px "Segoe UI", "Microsoft YaHei", sans-serif'
+      ctx.textAlign = 'left'
+      ctx.fillText('🔵 AI 蓝队', cx - 200, p2LabelY)
       for (const btn of this.menuButtons.filter(b => b.group === 'char2')) {
         this.drawCharButton(ctx, btn, btn.value === this.player2Char, colors.player2)
-        Player.drawPreview(ctx, btn.x, btn.y + 2, 18, btn.value as CharacterType, 'blue', colors)
+        Player.drawPreview(ctx, btn.x, btn.y + 2, 16, btn.value as CharacterType, 'blue', colors)
       }
     } else {
       const p2color = this.gameMode === 'trio' ? colors.player1 : colors.player2
-      const p2label = this.gameMode === 'trio' ? '玩家2 红队 (键盘)' : '玩家2 蓝队 (键盘)'
+      const p2label = this.gameMode === 'trio' ? '🔴 玩家2 红队 (键盘)' : '🔵 玩家2 蓝队 (键盘)'
       ctx.fillStyle = p2color
-      ctx.font = 'bold 15px "Segoe UI", "Microsoft YaHei", sans-serif'
-      ctx.fillText(p2label, cx + 118, cy - 65)
+      ctx.font = 'bold 16px "Segoe UI", "Microsoft YaHei", sans-serif'
+      ctx.textAlign = 'left'
+      ctx.fillText(p2label, cx - 200, p2LabelY)
       for (const btn of this.menuButtons.filter(b => b.group === 'char2')) {
         this.drawCharButton(ctx, btn, btn.value === this.player2Char, p2color)
         const team = this.gameMode === 'trio' ? 'red' : 'blue'
-        Player.drawPreview(ctx, btn.x, btn.y + 2, 18, btn.value as CharacterType, team as Team, colors)
+        Player.drawPreview(ctx, btn.x, btn.y + 2, 16, btn.value as CharacterType, team as Team, colors)
       }
     }
 
-    // 玩家3
+    // 玩家3（三人模式）
     if (this.gameMode === 'trio') {
+      const p3LabelY = p2LabelY + playerSectionHeight
       ctx.fillStyle = colors.player2
-      ctx.font = 'bold 15px "Segoe UI", "Microsoft YaHei", sans-serif'
-      ctx.fillText('玩家3 蓝队 (鼠标)', cx, cy + 22)
+      ctx.font = 'bold 16px "Segoe UI", "Microsoft YaHei", sans-serif'
+      ctx.textAlign = 'left'
+      ctx.fillText('🔵 玩家3 蓝队 (鼠标)', cx - 200, p3LabelY)
       for (const btn of this.menuButtons.filter(b => b.group === 'char3')) {
         this.drawCharButton(ctx, btn, btn.value === this.player3Char, colors.player2)
-        Player.drawPreview(ctx, btn.x, btn.y + 2, 18, btn.value as CharacterType, 'blue', colors)
+        Player.drawPreview(ctx, btn.x, btn.y + 2, 16, btn.value as CharacterType, 'blue', colors)
       }
     }
 
     // 操作说明
-    ctx.font = '12px "Segoe UI", "Microsoft YaHei", sans-serif'
+    const infoY = this.gameMode === 'trio' ? cy + 200 : cy + 150
+    ctx.font = '13px "Segoe UI", "Microsoft YaHei", sans-serif'
     ctx.fillStyle = '#ffffffaa'
+    ctx.textAlign = 'center'
     if (this.gameMode === 'trio') {
-      ctx.fillText('1P: WASD+空格 | 2P: 方向键+Enter | 3P: 鼠标移动+点击', cx, cy + 120)
+      ctx.fillText('1P: WASD+空格 | 2P: 方向键+Enter | 3P: 鼠标移动+点击', cx, infoY)
     } else if (this.gameMode === 'ai') {
-      ctx.fillText('1P: WASD+空格 踢球 | AI 自动控制蓝队', cx, cy + 120)
+      ctx.fillText('1P: WASD+空格 踢球 | AI 自动控制蓝队', cx, infoY)
     } else {
-      ctx.fillText('1P: WASD+空格 | 2P: 方向键+Enter', cx, cy + 120)
+      ctx.fillText('1P: WASD+空格 | 2P: 方向键+Enter', cx, infoY)
     }
 
     // 下一步按钮
+    const btnY = infoY + 30
     ctx.fillStyle = '#4CAF5030'
     ctx.strokeStyle = '#4CAF50'
     ctx.lineWidth = 2
     ctx.beginPath()
-    ctx.roundRect(cx - 70, cy + 160, 140, 40, 10)
+    ctx.roundRect(cx - 70, btnY, 140, 40, 10)
     ctx.fill()
     ctx.stroke()
     ctx.fillStyle = '#4CAF50'
     ctx.font = 'bold 18px "Segoe UI", "Microsoft YaHei", sans-serif'
-    ctx.fillText('下一步 →', cx, cy + 180)
+    ctx.textAlign = 'center'
+    ctx.fillText('下一步 →', cx, btnY + 20)
 
     // 返回
     ctx.font = '13px "Segoe UI", "Microsoft YaHei", sans-serif'
     ctx.fillStyle = '#ffffff60'
-    ctx.fillText('← 返回模式选择', cx, cy + 222)
+    ctx.fillText('← 返回模式选择', cx, btnY + 50)
   }
 
   // ============ 页面3：游戏设置 ============
@@ -831,7 +883,7 @@ export class Game {
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
 
     const cx = this.canvas.width / 2
-    const cy = this.canvas.height / 2
+    const cy = this.canvas.height / 2 - 40
 
     ctx.fillStyle = '#FFFFFF'
     ctx.font = 'bold 36px "Segoe UI", "Microsoft YaHei", sans-serif'
@@ -850,7 +902,7 @@ export class Game {
     // 场地大小
     ctx.font = '16px "Segoe UI", "Microsoft YaHei", sans-serif'
     ctx.fillStyle = '#ffffffcc'
-    ctx.fillText('场地大小（人物等比缩放）', cx, cy - 23)
+    ctx.fillText('场地大小（人物等比缩放）', cx, cy - 13)
     for (const btn of this.menuButtons.filter(b => b.group === 'fieldSize')) {
       this.drawSmallButton(ctx, btn, btn.value === this.fieldSize, '#76FF03')
     }
@@ -858,7 +910,7 @@ export class Game {
     // 胜利分数
     ctx.font = '16px "Segoe UI", "Microsoft YaHei", sans-serif'
     ctx.fillStyle = '#ffffffcc'
-    ctx.fillText('胜利分数', cx, cy + 32)
+    ctx.fillText('胜利分数', cx, cy + 52)
     for (const btn of this.menuButtons.filter(b => b.group === 'winScore')) {
       this.drawSmallButton(ctx, btn, btn.value === this.winScore, '#FFD700')
     }
@@ -866,7 +918,7 @@ export class Game {
     // 移动速度
     ctx.font = '16px "Segoe UI", "Microsoft YaHei", sans-serif'
     ctx.fillStyle = '#ffffffcc'
-    ctx.fillText('移动速度', cx, cy + 87)
+    ctx.fillText('移动速度', cx, cy + 117)
     for (const btn of this.menuButtons.filter(b => b.group === 'speed')) {
       this.drawSmallButton(ctx, btn, btn.value === this.playerSpeed, '#4FC3F7')
     }
@@ -876,17 +928,17 @@ export class Game {
     ctx.strokeStyle = '#FFD700'
     ctx.lineWidth = 2.5
     ctx.beginPath()
-    ctx.roundRect(cx - 80, cy + 170, 160, 45, 12)
+    ctx.roundRect(cx - 80, cy + 195, 160, 45, 12)
     ctx.fill()
     ctx.stroke()
     ctx.fillStyle = '#FFD700'
     ctx.font = 'bold 22px "Segoe UI", "Microsoft YaHei", sans-serif'
-    ctx.fillText('开始游戏', cx, cy + 193)
+    ctx.fillText('开始游戏', cx, cy + 218)
 
     // 返回
     ctx.font = '13px "Segoe UI", "Microsoft YaHei", sans-serif'
     ctx.fillStyle = '#ffffff60'
-    ctx.fillText('← 返回角色选择', cx, cy + 240)
+    ctx.fillText('← 返回角色选择', cx, cy + 265)
   }
 
   // ============ 按钮绘制 ============
@@ -936,10 +988,21 @@ export class Game {
   private handleMenuInput(): void {
     if (this.state === 'modeSelect') {
       this.canvas.style.cursor = 'default'
+      // Enter 快速开始：默认双人模式
+      if (this.inputManager.isJustPressed('Enter')) {
+        this.gameMode = 'duo'
+        this.state = 'charSelect'
+        this.setupMenuButtons()
+      }
     } else if (this.state === 'charSelect') {
       this.canvas.style.cursor = 'default'
       if (this.inputManager.isJustPressed('Escape')) {
         this.state = 'modeSelect'
+        this.setupMenuButtons()
+      }
+      // Enter 跳过角色选择，用默认值
+      if (this.inputManager.isJustPressed('Enter')) {
+        this.state = 'settings'
         this.setupMenuButtons()
       }
     } else if (this.state === 'settings') {
@@ -947,6 +1010,10 @@ export class Game {
       if (this.inputManager.isJustPressed('Escape')) {
         this.state = 'charSelect'
         this.setupMenuButtons()
+      }
+      // Enter 直接开始游戏，用默认设置
+      if (this.inputManager.isJustPressed('Enter')) {
+        this.start()
       }
     } else if (this.state === 'gameover') {
       this.canvas.style.cursor = 'default'

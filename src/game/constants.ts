@@ -7,9 +7,13 @@ export interface CharacterConfig {
 }
 
 export const CHARACTER_TYPES: CharacterConfig[] = [
-  { type: 'pixel',  label: '像素', description: '经典像素小人' },
-  { type: 'circle', label: '圆形', description: '简洁圆形球员' },
-  { type: 'robot',  label: '机器人', description: '方块机器人' },
+  { type: 'pixel',    label: '像素', description: '经典像素小人' },
+  { type: 'circle',   label: '圆形', description: '简洁圆形球员' },
+  { type: 'robot',    label: '机器人', description: '方块机器人' },
+  { type: 'ninja',    label: '忍者', description: '黑衣忍者' },
+  { type: 'cat',      label: '猫猫', description: '可爱猫咪' },
+  { type: 'alien',    label: '外星人', description: '绿色外星人' },
+  { type: 'stickman', label: '火柴人', description: '经典火柴人' },
 ]
 
 // 颜色配置
@@ -87,6 +91,8 @@ export interface SceneConfig {
 export const SCENE_TYPES: SceneConfig[] = [
   { type: 'classic', label: '草地', description: '经典绿色草坪' },
   { type: 'cyber',   label: '赛博', description: '霓虹赛博朋克' },
+  { type: 'pixel',   label: '像素', description: '8bit 复古像素' },
+  { type: 'pop',     label: '波普', description: '波普艺术风格' },
 ]
 
 // 经典场景颜色
@@ -125,6 +131,44 @@ export const CYBER_COLORS: ColorConfig = {
   ballPattern: '#FF6600',
   text:        '#00FFFF',
   scoreBg:     'rgba(0,255,255,0.15)',
+}
+
+// 像素复古场景颜色
+export const PIXEL_COLORS: ColorConfig = {
+  fieldDark:   '#1A5C1A',
+  fieldLight:   '#228B22',
+  lines:       '#FFFFFF',
+  background:  '#000000',
+  goal:        '#FFD700',
+  goalNet:     '#FFD70040',
+  player1:     '#FF0000',
+  player2:     '#0066FF',
+  playerStroke: '#FFFFFF',
+  arrowColor:  '#FFFFFF',
+  trailOpacity: 0.3,
+  ball:        '#FFFFFF',
+  ballPattern: '#000000',
+  text:        '#FFFFFF',
+  scoreBg:     'rgba(0,0,0,0.7)',
+}
+
+// 波普艺术场景颜色
+export const POP_COLORS: ColorConfig = {
+  fieldDark:   '#FF6B6B',
+  fieldLight:   '#FFE66D',
+  lines:       '#000000',
+  background:  '#4ECDC4',
+  goal:        '#FF0000',
+  goalNet:     '#FF000040',
+  player1:     '#FF3366',
+  player2:     '#3366FF',
+  playerStroke: '#000000',
+  arrowColor:  '#000000',
+  trailOpacity: 0.4,
+  ball:        '#FFFFFF',
+  ballPattern: '#FF0000',
+  text:        '#000000',
+  scoreBg:     'rgba(255,255,255,0.8)',
 }
 
 // 场地大小配置

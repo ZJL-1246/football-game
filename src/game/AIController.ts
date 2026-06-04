@@ -3,33 +3,32 @@ import type { Ball } from './Ball'
 import type { Field } from './Field'
 import type { Goal } from '../types'
 
-export interface AIInput {
-  vx: number
-  vy: number
-  kick: boolean
-}
-
 export class AIController {
-  private kickCooldown: number = 0
+  private difficulty: number // 0-1, 越高越强
   private decisionTimer: number = 0
+  private decisionInterval: number = 200 // 毫秒
   private targetX: number = 0
   private targetY: number = 0
-  private shouldKick: boolean = false
-  private difficulty: number // 0.5 ~ 1.0，越高越强
+  private kickTarget: { x: number; y: number } | null = null
 
-  constructor(difficulty: number = 0.75) {
-    this.difficulty = difficulty
+  constructor(difficulty: number = 0.7) {
+    this.difficulty = Math.max(0, Math.min(1, difficulty))
+    this.decisionInterval = 350 - this.difficulty * 200 // 150-350ms
   }
 
-  update(dt: number, player: Player, ball: Ball, field: Field, ownGoal: Goal, opponentGoal: Goal): AIInput {
-    // 冷却计时
-    if (this.kickCooldown > 0) this.kickCooldown -= dt * 16.67
+  update(
+    dt: number,
+    player: Player,
+    ball: Ball,
+    field: Field,
+    ownGoal: Goal,
+    targetGoal: Goal
+  ): { vx: number; vy: number; kick: boolean; kickTarget: { x: number; y: number } | null } {
+    this.decisionTimer += dt * 16.67
 
-    // 每隔一小段时间做一次决策（模拟反应延迟）
-    this.decisionTimer -= dt
-    if (this.decisionTimer <= 0) {
-      this.decisionTimer = 0.15 + (1 - this.difficulty) * 0.2 // 反应时间
-      this.makeDecision(player, ball, field, ownGoal, opponentGoal)
+    if (this.decisionTimer >= this.decisionInterval) {
+      this.decisionTimer = 0
+      this.decide(player, ball, field, ownGoal, targetGoal)
     }
 
     // 朝目标移动
@@ -39,76 +38,101 @@ export class AIController {
 
     let vx = 0
     let vy = 0
-
     if (dist > 5) {
-      const speed = this.difficulty * 0.9 + 0.1 // 速度系数
-      vx = (dx / dist) * speed
-      vy = (dy / dist) * speed
+      vx = dx / dist
+      vy = dy / dist
     }
 
-    // 踢球判断
-    const kick = this.shouldKick && this.kickCooldown <= 0
-    if (kick) {
-      this.kickCooldown = 300
-      this.shouldKick = false
-    }
+    // 判断是否该踢球
+    const kick = this.shouldKick(player, ball)
 
-    return { vx, vy, kick }
+    return { vx, vy, kick, kickTarget: this.kickTarget }
   }
 
-  private makeDecision(player: Player, ball: Ball, field: Field, ownGoal: Goal, opponentGoal: Goal): void {
-    const ballDist = this.dist(player.x, player.y, ball.x, ball.y)
+  private decide(
+    player: Player,
+    ball: Ball,
+    field: Field,
+    ownGoal: Goal,
+    targetGoal: Goal
+  ): void {
+    const ballDist = this.dist(player, ball)
+
+    // 判断球是否在我方脚下（距离近 + 球速慢）
+    const ballSpeed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy)
+    const hasBall = ballDist < player.radius + ball.radius + 10 && ballSpeed < 3
+
+    const goalCenterY = targetGoal.y
+    const goalTop = targetGoal.y - targetGoal.height / 2
+    const goalBottom = targetGoal.y + targetGoal.height / 2
+
+    if (hasBall) {
+      // 持球 → 朝对方球门推进
+      const goalDist = Math.abs(player.x - targetGoal.x)
+      if (goalDist < 300) {
+        // 离球门近 → 射门
+        this.kickTarget = {
+          x: targetGoal.x,
+          y: goalCenterY + (Math.random() - 0.5) * (goalBottom - goalTop) * 0.8,
+        }
+        this.targetX = ball.x
+        this.targetY = ball.y
+      } else {
+        // 还远 → 带球推进
+        this.kickTarget = {
+          x: targetGoal.x,
+          y: goalCenterY,
+        }
+        this.targetX = targetGoal.x
+        this.targetY = player.y + (Math.random() - 0.5) * 50
+      }
+    } else {
+      // 没持球 → 追球
+      this.kickTarget = null
+      this.targetX = ball.x
+      this.targetY = ball.y
+
+      // 如果球朝我方球门来，优先回防
+      const ballApproaching = (targetGoal.x > ownGoal.x)
+        ? ball.vx < -1
+        : ball.vx > 1
+      if (ballApproaching && Math.abs(ball.x - ownGoal.x) < field.width * 0.4) {
+        // 回防到球和球门之间
+        this.targetX = (ball.x + ownGoal.x) / 2
+        this.targetY = ball.y
+      }
+
+      // 球在对方半场时适当前压
+      const ballInOpponentHalf = Math.abs(ball.x - targetGoal.x) < Math.abs(ball.x - ownGoal.x)
+      if (ballInOpponentHalf && ballDist > 200) {
+        this.targetX = ball.x + (targetGoal.x - ball.x) * 0.3
+        this.targetY = ball.y + (Math.random() - 0.5) * 80
+      }
+    }
+
+    // 加入一点随机偏移，模拟人类不精确
+    this.targetX += (Math.random() - 0.5) * 15 * (1 - this.difficulty)
+    this.targetY += (Math.random() - 0.5) * 15 * (1 - this.difficulty)
+  }
+
+  private shouldKick(player: Player, ball: Ball): boolean {
+    // Player 自身有 kickCooldown，不需要 AI 再管
+    const dx = ball.x - player.x
+    const dy = ball.y - player.y
+    const distance = Math.sqrt(dx * dx + dy * dy)
     const kickRange = player.radius + ball.radius + 15
 
-    // 球在脚下 → 朝对方球门踢
-    if (ballDist < kickRange) {
-      this.shouldKick = true
-      // 朝对方球门方向移动
-      const goalCenterX = opponentGoal.x + opponentGoal.width / 2
-      const goalCenterY = opponentGoal.y + opponentGoal.height / 2
-      this.targetX = goalCenterX
-      this.targetY = goalCenterY
-      return
+    // 距离够近就踢，高概率（越近越容易踢）
+    if (distance < kickRange) {
+      const probability = distance < kickRange * 0.6 ? 0.9 : 0.6
+      return Math.random() < probability * this.difficulty
     }
-
-    // 判断球是否朝自己球门飞来
-    const ballToGoalDx = ownGoal.x + ownGoal.width / 2 - ball.x
-    const ballToGoalDy = ownGoal.y + ownGoal.height / 2 - ball.y
-    const ballMovingToGoal = (ball.vx * ballToGoalDx + ball.vy * ballToGoalDy) > 0
-
-    // 球飞向自己球门 → 回防
-    if (ballMovingToGoal && this.dist(ball.x, ball.y, ownGoal.x + ownGoal.width / 2, ownGoal.y + ownGoal.height / 2) < field.width * 0.4) {
-      // 回到球门前防守
-      const defenseX = ownGoal.x + ownGoal.width + player.radius * 2
-      const defenseY = ownGoal.y + ownGoal.height / 2
-      this.targetX = defenseX
-      this.targetY = defenseY + (ball.y - defenseY) * 0.5 // 跟踪球的Y位置
-      this.shouldKick = false
-      return
-    }
-
-    // 球在对方半场 → 压上
-    const fieldCenterX = field.x + field.width / 2
-    const isBallInOpponentHalf = (opponentGoal.x < fieldCenterX && ball.x > fieldCenterX) ||
-                                  (opponentGoal.x > fieldCenterX && ball.x < fieldCenterX)
-
-    if (isBallInOpponentHalf && ballDist > field.width * 0.3) {
-      // 球在对方半场且较远，压上到中场附近
-      this.targetX = fieldCenterX + (opponentGoal.x < fieldCenterX ? -field.width * 0.15 : field.width * 0.15)
-      this.targetY = ball.y
-      this.shouldKick = false
-      return
-    }
-
-    // 默认：追球
-    this.targetX = ball.x
-    this.targetY = ball.y
-    this.shouldKick = false
+    return false
   }
 
-  private dist(x1: number, y1: number, x2: number, y2: number): number {
-    const dx = x2 - x1
-    const dy = y2 - y1
+  private dist(a: { x: number; y: number }, b: { x: number; y: number }): number {
+    const dx = a.x - b.x
+    const dy = a.y - b.y
     return Math.sqrt(dx * dx + dy * dy)
   }
 }

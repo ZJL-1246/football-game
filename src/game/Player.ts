@@ -79,6 +79,18 @@ export class Player {
       case 'robot':
         this.drawRobotCharacter(ctx)
         break
+      case 'ninja':
+        this.drawNinjaCharacter(ctx)
+        break
+      case 'cat':
+        this.drawCatCharacter(ctx)
+        break
+      case 'alien':
+        this.drawAlienCharacter(ctx)
+        break
+      case 'stickman':
+        this.drawStickmanCharacter(ctx)
+        break
     }
   }
 
@@ -279,6 +291,378 @@ export class Player {
     this.drawArrow(ctx, s)
   }
 
+  // ============ 忍者 ============
+  private drawNinjaCharacter(ctx: CanvasRenderingContext2D): void {
+    const s = this.radius
+    const x = this.x
+    const y = this.y
+    const moving = Math.abs(this.vx) > 0.3 || Math.abs(this.vy) > 0.3
+    const legOffset = moving ? Math.sin(this.animFrame * 2) * s * 0.2 : 0
+    const darkColor = this.team === 'red' ? '#B71C1C' : '#0D47A1'
+
+    // 腿
+    ctx.fillStyle = '#212121'
+    ctx.fillRect(x - s * 0.2 - 1, y + s * 0.3 + legOffset, s * 0.16, s * 0.35)
+    ctx.fillRect(x + s * 0.04 + 1, y + s * 0.3 - legOffset, s * 0.16, s * 0.35)
+
+    // 鞋子
+    ctx.fillStyle = '#111111'
+    ctx.fillRect(x - s * 0.25 - 1, y + s * 0.6 + legOffset, s * 0.22, s * 0.1)
+    ctx.fillRect(x - s * 0.01 + 1, y + s * 0.6 - legOffset, s * 0.22, s * 0.1)
+
+    // 身体（黑色忍者服）
+    ctx.fillStyle = '#212121'
+    ctx.fillRect(x - s * 0.32, y - s * 0.3, s * 0.64, s * 0.65)
+    ctx.strokeStyle = darkColor
+    ctx.lineWidth = 1.5
+    ctx.strokeRect(x - s * 0.32, y - s * 0.3, s * 0.64, s * 0.65)
+
+    // 腰带
+    ctx.fillStyle = this.color
+    ctx.fillRect(x - s * 0.34, y + s * 0.05, s * 0.68, s * 0.08)
+
+    // 手臂
+    const armOffset = moving ? -legOffset * 0.8 : 0
+    ctx.fillStyle = '#212121'
+    ctx.fillRect(x - s * 0.48, y - s * 0.15 + armOffset, s * 0.12, s * 0.3)
+    ctx.fillRect(x + s * 0.36, y - s * 0.15 - armOffset, s * 0.12, s * 0.3)
+
+    // 头（黑色头巾）
+    ctx.fillStyle = '#212121'
+    ctx.beginPath()
+    ctx.arc(x, y - s * 0.42, s * 0.24, 0, Math.PI * 2)
+    ctx.fill()
+
+    // 护额
+    ctx.fillStyle = '#757575'
+    ctx.fillRect(x - s * 0.26, y - s * 0.52, s * 0.52, s * 0.08)
+    // 护额中间标志
+    ctx.fillStyle = this.color
+    ctx.fillRect(x - s * 0.06, y - s * 0.54, s * 0.12, s * 0.12)
+
+    // 眼睛（露出的部分）
+    const eyeDir = Math.cos(this.direction) > 0 ? 1 : -1
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillRect(x + eyeDir * s * 0.02 - 2, y - s * 0.42, s * 0.14, s * 0.06)
+    ctx.fillRect(x + eyeDir * s * 0.12 - 2, y - s * 0.42, s * 0.14, s * 0.06)
+    // 瞳孔
+    ctx.fillStyle = '#000000'
+    ctx.fillRect(x + eyeDir * s * 0.06 - 1, y - s * 0.41, 2, 2)
+    ctx.fillRect(x + eyeDir * s * 0.16 - 1, y - s * 0.41, 2, 2)
+
+    // 编号
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = `bold ${s * 0.35}px monospace`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(this.label.replace('P', ''), x, y + s * 0.05)
+
+    this.drawArrow(ctx, s)
+  }
+
+  // ============ 猫猫 ============
+  private drawCatCharacter(ctx: CanvasRenderingContext2D): void {
+    const s = this.radius
+    const x = this.x
+    const y = this.y
+    const moving = Math.abs(this.vx) > 0.3 || Math.abs(this.vy) > 0.3
+    const legOffset = moving ? Math.sin(this.animFrame * 2) * s * 0.2 : 0
+    const darkColor = this.team === 'red' ? '#B71C1C' : '#0D47A1'
+
+    // 尾巴
+    ctx.strokeStyle = this.color
+    ctx.lineWidth = s * 0.12
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.moveTo(x + s * 0.3, y + s * 0.2)
+    const tailWag = moving ? Math.sin(this.animFrame * 3) * s * 0.15 : 0
+    ctx.quadraticCurveTo(x + s * 0.6, y - s * 0.1 + tailWag, x + s * 0.5, y - s * 0.4 + tailWag)
+    ctx.stroke()
+
+    // 腿
+    ctx.fillStyle = this.color
+    ctx.fillRect(x - s * 0.22 - 1, y + s * 0.3 + legOffset, s * 0.15, s * 0.25)
+    ctx.fillRect(x + s * 0.07 + 1, y + s * 0.3 - legOffset, s * 0.15, s * 0.25)
+
+    // 爪子
+    ctx.fillStyle = '#FFCC80'
+    ctx.fillRect(x - s * 0.25 - 1, y + s * 0.52 + legOffset, s * 0.2, s * 0.08)
+    ctx.fillRect(x + s * 0.05 + 1, y + s * 0.52 - legOffset, s * 0.2, s * 0.08)
+
+    // 身体
+    ctx.fillStyle = this.color
+    ctx.beginPath()
+    ctx.ellipse(x, y + s * 0.05, s * 0.32, s * 0.38, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = darkColor
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+
+    // 肚皮
+    ctx.fillStyle = '#FFCC80'
+    ctx.beginPath()
+    ctx.ellipse(x, y + s * 0.12, s * 0.18, s * 0.22, 0, 0, Math.PI * 2)
+    ctx.fill()
+
+    // 头
+    ctx.fillStyle = this.color
+    ctx.beginPath()
+    ctx.arc(x, y - s * 0.38, s * 0.28, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = darkColor
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+
+    // 耳朵
+    ctx.fillStyle = this.color
+    ctx.beginPath()
+    ctx.moveTo(x - s * 0.22, y - s * 0.52)
+    ctx.lineTo(x - s * 0.12, y - s * 0.75)
+    ctx.lineTo(x - s * 0.02, y - s * 0.52)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.moveTo(x + s * 0.02, y - s * 0.52)
+    ctx.lineTo(x + s * 0.12, y - s * 0.75)
+    ctx.lineTo(x + s * 0.22, y - s * 0.52)
+    ctx.fill()
+    // 内耳
+    ctx.fillStyle = '#FFAB91'
+    ctx.beginPath()
+    ctx.moveTo(x - s * 0.18, y - s * 0.52)
+    ctx.lineTo(x - s * 0.12, y - s * 0.68)
+    ctx.lineTo(x - s * 0.06, y - s * 0.52)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.moveTo(x + s * 0.06, y - s * 0.52)
+    ctx.lineTo(x + s * 0.12, y - s * 0.68)
+    ctx.lineTo(x + s * 0.18, y - s * 0.52)
+    ctx.fill()
+
+    // 眼睛
+    const eyeDir = Math.cos(this.direction) > 0 ? 1 : -1
+    ctx.fillStyle = '#4CAF50'
+    ctx.beginPath()
+    ctx.ellipse(x + eyeDir * s * 0.05 - s * 0.06, y - s * 0.4, s * 0.07, s * 0.08, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.ellipse(x + eyeDir * s * 0.05 + s * 0.08, y - s * 0.4, s * 0.07, s * 0.08, 0, 0, Math.PI * 2)
+    ctx.fill()
+    // 瞳孔（竖瞳）
+    ctx.fillStyle = '#000000'
+    ctx.fillRect(x + eyeDir * s * 0.05 - s * 0.07, y - s * 0.42, s * 0.02, s * 0.08)
+    ctx.fillRect(x + eyeDir * s * 0.05 + s * 0.07, y - s * 0.42, s * 0.02, s * 0.08)
+
+    // 鼻子
+    ctx.fillStyle = '#FF8A80'
+    ctx.beginPath()
+    ctx.arc(x + eyeDir * s * 0.05, y - s * 0.32, s * 0.04, 0, Math.PI * 2)
+    ctx.fill()
+
+    // 嘴
+    ctx.strokeStyle = '#000000'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(x + eyeDir * s * 0.05, y - s * 0.28)
+    ctx.lineTo(x + eyeDir * s * 0.05 - s * 0.06, y - s * 0.22)
+    ctx.moveTo(x + eyeDir * s * 0.05, y - s * 0.28)
+    ctx.lineTo(x + eyeDir * s * 0.05 + s * 0.06, y - s * 0.22)
+    ctx.stroke()
+
+    // 胡须
+    ctx.strokeStyle = '#000000'
+    ctx.lineWidth = 1
+    for (let i = -1; i <= 1; i += 2) {
+      ctx.beginPath()
+      ctx.moveTo(x + eyeDir * s * 0.12, y - s * 0.3 + i * s * 0.04)
+      ctx.lineTo(x + eyeDir * s * 0.35, y - s * 0.3 + i * s * 0.1)
+      ctx.stroke()
+    }
+
+    // 编号
+    ctx.fillStyle = '#FFFFFF'
+    ctx.strokeStyle = '#000000'
+    ctx.lineWidth = 2
+    ctx.font = `bold ${s * 0.35}px sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.strokeText(this.label.replace('P', ''), x, y + s * 0.08)
+    ctx.fillText(this.label.replace('P', ''), x, y + s * 0.08)
+
+    this.drawArrow(ctx, s)
+  }
+
+  // ============ 外星人 ============
+  private drawAlienCharacter(ctx: CanvasRenderingContext2D): void {
+    const s = this.radius
+    const x = this.x
+    const y = this.y
+    const moving = Math.abs(this.vx) > 0.3 || Math.abs(this.vy) > 0.3
+    const legOffset = moving ? Math.sin(this.animFrame * 2) * s * 0.15 : 0
+
+    // 腿
+    ctx.fillStyle = '#388E3C'
+    ctx.fillRect(x - s * 0.18 - 1, y + s * 0.25 + legOffset, s * 0.12, s * 0.3)
+    ctx.fillRect(x + s * 0.06 + 1, y + s * 0.25 - legOffset, s * 0.12, s * 0.3)
+
+    // 鞋子（发光）
+    ctx.fillStyle = '#00E5FF'
+    ctx.fillRect(x - s * 0.22 - 1, y + s * 0.52 + legOffset, s * 0.18, s * 0.08)
+    ctx.fillRect(x + s * 0.04 + 1, y + s * 0.52 - legOffset, s * 0.18, s * 0.08)
+
+    // 身体
+    ctx.fillStyle = '#4CAF50'
+    ctx.beginPath()
+    ctx.ellipse(x, y + s * 0.05, s * 0.28, s * 0.35, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = '#388E3C'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+
+    // 太空服条纹
+    ctx.fillStyle = this.color + '80'
+    ctx.fillRect(x - s * 0.2, y - s * 0.1, s * 0.4, s * 0.06)
+
+    // 手臂
+    const armOffset = moving ? -legOffset * 0.8 : 0
+    ctx.fillStyle = '#4CAF50'
+    ctx.fillRect(x - s * 0.42, y - s * 0.1 + armOffset, s * 0.1, s * 0.25)
+    ctx.fillRect(x + s * 0.32, y - s * 0.1 - armOffset, s * 0.1, s * 0.25)
+
+    // 头（大而圆）
+    ctx.fillStyle = '#66BB6A'
+    ctx.beginPath()
+    ctx.ellipse(x, y - s * 0.4, s * 0.32, s * 0.3, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = '#4CAF50'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+
+    // 大眼睛
+    const eyeDir = Math.cos(this.direction) > 0 ? 1 : -1
+    ctx.fillStyle = '#000000'
+    ctx.beginPath()
+    ctx.ellipse(x + eyeDir * s * 0.05 - s * 0.1, y - s * 0.42, s * 0.12, s * 0.16, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.ellipse(x + eyeDir * s * 0.05 + s * 0.12, y - s * 0.42, s * 0.12, s * 0.16, 0, 0, Math.PI * 2)
+    ctx.fill()
+    // 眼睛高光
+    ctx.fillStyle = '#00E5FF'
+    ctx.beginPath()
+    ctx.arc(x + eyeDir * s * 0.05 - s * 0.06, y - s * 0.46, s * 0.05, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(x + eyeDir * s * 0.05 + s * 0.16, y - s * 0.46, s * 0.05, 0, Math.PI * 2)
+    ctx.fill()
+
+    // 天线
+    ctx.strokeStyle = '#4CAF50'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(x - s * 0.12, y - s * 0.65)
+    ctx.lineTo(x - s * 0.2, y - s * 0.85)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(x + s * 0.12, y - s * 0.65)
+    ctx.lineTo(x + s * 0.2, y - s * 0.85)
+    ctx.stroke()
+    // 天线球
+    ctx.fillStyle = '#FF5722'
+    ctx.beginPath()
+    ctx.arc(x - s * 0.2, y - s * 0.87, s * 0.06, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(x + s * 0.2, y - s * 0.87, s * 0.06, 0, Math.PI * 2)
+    ctx.fill()
+
+    // 编号
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = `bold ${s * 0.35}px monospace`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(this.label.replace('P', ''), x, y + s * 0.08)
+
+    this.drawArrow(ctx, s)
+  }
+
+  // ============ 火柴人 ============
+  private drawStickmanCharacter(ctx: CanvasRenderingContext2D): void {
+    const s = this.radius
+    const x = this.x
+    const y = this.y
+    const moving = Math.abs(this.vx) > 0.3 || Math.abs(this.vy) > 0.3
+    const legOffset = moving ? Math.sin(this.animFrame * 2) * s * 0.3 : 0
+    const armOffset = moving ? -legOffset * 0.8 : 0
+
+    ctx.strokeStyle = this.color
+    ctx.lineWidth = s * 0.1
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+
+    // 头
+    ctx.beginPath()
+    ctx.arc(x, y - s * 0.45, s * 0.18, 0, Math.PI * 2)
+    ctx.stroke()
+    // 头部填充
+    ctx.fillStyle = '#FFCC80'
+    ctx.fill()
+
+    // 身体
+    ctx.beginPath()
+    ctx.moveTo(x, y - s * 0.27)
+    ctx.lineTo(x, y + s * 0.2)
+    ctx.stroke()
+
+    // 手臂
+    ctx.beginPath()
+    ctx.moveTo(x - s * 0.35, y - s * 0.05 + armOffset)
+    ctx.lineTo(x, y - s * 0.15)
+    ctx.lineTo(x + s * 0.35, y - s * 0.05 - armOffset)
+    ctx.stroke()
+
+    // 腿
+    ctx.beginPath()
+    ctx.moveTo(x - s * 0.25, y + s * 0.5 + legOffset)
+    ctx.lineTo(x, y + s * 0.2)
+    ctx.lineTo(x + s * 0.25, y + s * 0.5 - legOffset)
+    ctx.stroke()
+
+    // 鞋子
+    ctx.fillStyle = '#212121'
+    ctx.beginPath()
+    ctx.ellipse(x - s * 0.25, y + s * 0.52 + legOffset, s * 0.1, s * 0.04, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.ellipse(x + s * 0.25, y + s * 0.52 - legOffset, s * 0.1, s * 0.04, 0, 0, Math.PI * 2)
+    ctx.fill()
+
+    // 眼睛
+    const eyeDir = Math.cos(this.direction) > 0 ? 1 : -1
+    ctx.fillStyle = '#000000'
+    ctx.beginPath()
+    ctx.arc(x + eyeDir * s * 0.04 - s * 0.05, y - s * 0.47, s * 0.03, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(x + eyeDir * s * 0.04 + s * 0.07, y - s * 0.47, s * 0.03, 0, Math.PI * 2)
+    ctx.fill()
+
+    // 笑嘴
+    ctx.strokeStyle = '#000000'
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.arc(x + eyeDir * s * 0.04, y - s * 0.38, s * 0.08, 0.1 * Math.PI, 0.9 * Math.PI)
+    ctx.stroke()
+
+    // 编号
+    ctx.fillStyle = this.color
+    ctx.font = `bold ${s * 0.4}px sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(this.label.replace('P', ''), x, y - s * 0.05)
+
+    this.drawArrow(ctx, s)
+  }
+
   // ============ 公共：朝向箭头 ============
   private drawArrow(ctx: CanvasRenderingContext2D, s: number): void {
     ctx.save()
@@ -309,6 +693,18 @@ export class Player {
         break
       case 'robot':
         tempPlayer.drawRobotCharacter(ctx)
+        break
+      case 'ninja':
+        tempPlayer.drawNinjaCharacter(ctx)
+        break
+      case 'cat':
+        tempPlayer.drawCatCharacter(ctx)
+        break
+      case 'alien':
+        tempPlayer.drawAlienCharacter(ctx)
+        break
+      case 'stickman':
+        tempPlayer.drawStickmanCharacter(ctx)
         break
     }
   }
