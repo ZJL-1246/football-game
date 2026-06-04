@@ -344,9 +344,11 @@ export class Game {
         this.goalScored = false
         if (this.scoreManager.isGameOver()) {
           this.state = 'gameover'
+          console.log('→ gameover')
         } else {
           this.resetPositions()
           this.state = 'playing'
+          console.log('→ playing, reset done')
         }
       }
       return
@@ -446,6 +448,7 @@ export class Game {
     this.goalFlash = 1
     this.goalScored = true
     this.soundManager.playGoal()
+    console.log(`GOAL! ${team} scored, timer=${this.goalTimer}, gameOver=${this.scoreManager.isGameOver()}`)
 
     // 立即把球移到场地中心，防止重复触发
     const center = this.field.getCenter()
@@ -457,13 +460,13 @@ export class Game {
     const bounds = this.field.getBounds()
     const playerOffset = bounds.width * 0.3
 
-    if (this.gameMode === 'duo') {
-      this.players[0].reset(center.x - playerOffset, center.y)
-      this.players[1].reset(center.x + playerOffset, center.y)
-    } else {
+    if (this.gameMode === 'trio') {
       this.players[0].reset(center.x - playerOffset * 1.2, center.y)
       this.players[1].reset(center.x - playerOffset * 0.4, center.y)
       this.players[2].reset(center.x + playerOffset, center.y)
+    } else {
+      this.players[0].reset(center.x - playerOffset, center.y)
+      this.players[1].reset(center.x + playerOffset, center.y)
     }
 
     this.ball.reset(center.x, center.y)
