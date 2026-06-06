@@ -10,11 +10,11 @@ export class InputManager {
   mouseY: number = 0
   mouseClicked: boolean = false
 
-  constructor() {
-    this.setupListeners()
+  constructor(canvas?: HTMLCanvasElement) {
+    this.setupListeners(canvas)
   }
 
-  private setupListeners(): void {
+  private setupListeners(canvas?: HTMLCanvasElement): void {
     window.addEventListener('keydown', (e) => {
       if (!this.pressedKeys.has(e.code)) {
         this.justPressedKeys.add(e.code)
@@ -35,15 +35,15 @@ export class InputManager {
     })
 
     // 鼠标事件
-    const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement
-    if (canvas) {
-      canvas.addEventListener('mousemove', (e) => {
-        const rect = canvas.getBoundingClientRect()
+    const targetCanvas = canvas ?? document.getElementById('gameCanvas') as HTMLCanvasElement
+    if (targetCanvas) {
+      targetCanvas.addEventListener('mousemove', (e) => {
+        const rect = targetCanvas.getBoundingClientRect()
         this.mouseX = e.clientX - rect.left
         this.mouseY = e.clientY - rect.top
       })
 
-      canvas.addEventListener('mousedown', (e) => {
+      targetCanvas.addEventListener('mousedown', (e) => {
         if (e.button === 0) {
           this.mouseClicked = true
         }

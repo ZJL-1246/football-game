@@ -15,9 +15,9 @@ export class Physics {
   }
 
   // 球员与球碰撞
-  static playerBallCollision(player: Player, ball: Ball): boolean {
+  static playerBallCollision(player: Player, ball: Ball, attractMult: number = 1): boolean {
     return this.circleVsCircle(
-      player.x, player.y, player.radius,
+      player.x, player.y, player.radius * attractMult,
       ball.x, ball.y, ball.radius
     )
   }
@@ -31,7 +31,7 @@ export class Physics {
   }
 
   // 处理球员与球碰撞（自然带球 - 球跟随球员）
-  static resolvePlayerBallCollision(player: Player, ball: Ball): void {
+  static resolvePlayerBallCollision(player: Player, ball: Ball, isAgile: boolean = false): void {
     const dx = ball.x - player.x
     const dy = ball.y - player.y
     const dist = Math.sqrt(dx * dx + dy * dy)
@@ -65,14 +65,16 @@ export class Physics {
       return
     }
 
-    // 球跟随球员移动
+    // 球跟随球员移动（猫猫特性：球跟得更紧）
+    const followRate = isAgile ? 0.98 : 0.9
+    const stopRate = isAgile ? 0.3 : 0.5
     if (playerSpeed > 0.3) {
-      ball.vx = player.vx * 0.9
-      ball.vy = player.vy * 0.9
+      ball.vx = player.vx * followRate
+      ball.vy = player.vy * followRate
     } else {
       // 球员静止时，球也减速停下
-      ball.vx *= 0.5
-      ball.vy *= 0.5
+      ball.vx *= stopRate
+      ball.vy *= stopRate
     }
   }
 
@@ -98,23 +100,24 @@ export class Physics {
       p2.y += ny * separation
     }
 
-    // 交换速度分量（弹性碰撞）
+    // 交换法向速度分量（弹性碰撞，恢复系数 0.8）
+    const restitution = 0.8
     const v1n = p1.vx * nx + p1.vy * ny
     const v2n = p2.vx * nx + p2.vy * ny
 
-    p1.vx += (v2n - v1n) * nx * 0.5
-    p1.vy += (v2n - v1n) * ny * 0.5
-    p2.vx += (v1n - v2n) * nx * 0.5
-    p2.vy += (v1n - v2n) * ny * 0.5
+    p1.vx += (v2n - v1n) * nx * restitution
+    p1.vy += (v2n - v1n) * ny * restitution
+    p2.vx += (v1n - v2n) * nx * restitution
+    p2.vy += (v1n - v2n) * ny * restitution
   }
 
   // 检查球是否在球门内
   static isBallInGoal(ball: Ball, goal: Goal): boolean {
     return (
-      ball.x - ball.radius > goal.x &&
-      ball.x + ball.radius < goal.x + goal.width &&
-      ball.y - ball.radius > goal.y &&
-      ball.y + ball.radius < goal.y + goal.height
+      ball.x - ball.radius >= goal.x &&
+      ball.x + ball.radius <= goal.x + goal.width &&
+      ball.y - ball.radius >= goal.y &&
+      ball.y + ball.radius <= goal.y + goal.height
     )
   }
 }

@@ -10,6 +10,7 @@ export class AIController {
   private targetX: number = 0
   private targetY: number = 0
   private kickTarget: { x: number; y: number } | null = null
+  private wantsToKick: boolean = false
 
   constructor(difficulty: number = 0.7) {
     this.difficulty = Math.max(0, Math.min(1, difficulty))
@@ -29,6 +30,7 @@ export class AIController {
     if (this.decisionTimer >= this.decisionInterval) {
       this.decisionTimer = 0
       this.decide(player, ball, field, ownGoal, targetGoal)
+      this.wantsToKick = this.shouldKick(player, ball)
     }
 
     // 朝目标移动
@@ -43,8 +45,9 @@ export class AIController {
       vy = dy / dist
     }
 
-    // 判断是否该踢球
-    const kick = this.shouldKick(player, ball)
+    // 判断是否该踢球（仅在决策时刻判定，避免帧率依赖）
+    const kick = this.wantsToKick
+    this.wantsToKick = false // 消费掉踢球意图
 
     return { vx, vy, kick, kickTarget: this.kickTarget }
   }
@@ -62,9 +65,9 @@ export class AIController {
     const ballSpeed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy)
     const hasBall = ballDist < player.radius + ball.radius + 10 && ballSpeed < 3
 
-    const goalCenterY = targetGoal.y
-    const goalTop = targetGoal.y - targetGoal.height / 2
-    const goalBottom = targetGoal.y + targetGoal.height / 2
+    const goalCenterY = targetGoal.y + targetGoal.height / 2
+    const goalTop = targetGoal.y
+    const goalBottom = targetGoal.y + targetGoal.height
 
     if (hasBall) {
       // 持球 → 朝对方球门推进
@@ -87,8 +90,8 @@ export class AIController {
         this.targetY = player.y + (Math.random() - 0.5) * 50
       }
     } else {
-      // 没持球 → 追球
-      this.kickTarget = null
+      // 没持球 → 追球，朝对方球门方向踢（避免乌龙球）
+      this.kickTarget = { x: targetGoal.x, y: targetGoal.y + targetGoal.height / 2 }
       this.targetX = ball.x
       this.targetY = ball.y
 
@@ -120,11 +123,12 @@ export class AIController {
     const dx = ball.x - player.x
     const dy = ball.y - player.y
     const distance = Math.sqrt(dx * dx + dy * dy)
-    const kickRange = player.radius + ball.radius + 15
+    const kickRange = (player.radius + ball.radius + 10) * player.stats.attractMult
 
-    // 距离够近就踢，高概率（越近越容易踢）
+    // 距离够近就踢，概率与难度和距离相关（仅在决策时刻判定，避免帧率依赖）
     if (distance < kickRange) {
-      const probability = distance < kickRange * 0.6 ? 0.9 : 0.6
+      const closeness = 1 - (distance / kickRange) // 0~1，越近越大
+      const probability = 0.5 + closeness * 0.4     // 0.5~0.9
       return Math.random() < probability * this.difficulty
     }
     return false

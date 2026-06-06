@@ -394,5 +394,7 @@ export class Ball {
     this.vx = 0
     this.vy = 0
     this.rotation = 0
+    this.justKicked = 0
+    this.lastKickedByTeam = null
   }
 }

@@ -1,5 +1,5 @@
-import type { Team, CharacterType, PlayerMode, ColorConfig } from '../types'
-import { CLASSIC_COLORS, GAME_PARAMS } from './constants'
+import type { Team, CharacterType, PlayerMode, ColorConfig, CharacterStats } from '../types'
+import { CLASSIC_COLORS, GAME_PARAMS, CHARACTER_STATS } from './constants'
 
 interface KickEffect {
   x: number
@@ -23,6 +23,11 @@ export class Player {
   characterType: CharacterType
   playerMode: PlayerMode
   colors: ColorConfig
+  stats: CharacterStats
+  burstVx: number = 0  // 忍者冲刺残留速度 X
+  burstVy: number = 0  // 忍者冲刺残留速度 Y
+  teleportTrail: { x: number; y: number; opacity: number } | null = null  // 瞬移残影
+  pendingTeleport: { x: number; y: number; timer: number } | null = null  // 延迟瞬移
   private animFrame: number = 0
   private kickEffect: KickEffect | null = null
 
@@ -40,11 +45,29 @@ export class Player {
     this.label = label
     this.characterType = characterType
     this.playerMode = playerMode
+    this.stats = CHARACTER_STATS[characterType]
   }
 
   update(dt: number): void {
-    this.x += this.vx * dt
-    this.y += this.vy * dt
+    // 冲刺残留速度衰减
+    this.burstVx *= 0.85
+    this.burstVy *= 0.85
+    if (Math.abs(this.burstVx) < 0.05) this.burstVx = 0
+    if (Math.abs(this.burstVy) < 0.05) this.burstVy = 0
+
+    // 延迟瞬移（忍者特性）
+    if (this.pendingTeleport) {
+      this.pendingTeleport.timer -= dt * 16.67
+      if (this.pendingTeleport.timer <= 0) {
+        this.teleportTrail = { x: this.x, y: this.y, opacity: 1 }
+        this.x = this.pendingTeleport.x
+        this.y = this.pendingTeleport.y
+        this.pendingTeleport = null
+      }
+    }
+
+    this.x += (this.vx + this.burstVx) * dt
+    this.y += (this.vy + this.burstVy) * dt
 
     if (Math.abs(this.vx) > 0.1 || Math.abs(this.vy) > 0.1) {
       this.direction = Math.atan2(this.vy, this.vx)
@@ -61,6 +84,13 @@ export class Player {
       }
     }
 
+    if (this.teleportTrail) {
+      this.teleportTrail.opacity -= 0.08 * dt
+      if (this.teleportTrail.opacity <= 0) {
+        this.teleportTrail = null
+      }
+    }
+
     if (this.kickCooldown > 0) {
       this.kickCooldown -= dt * 16.67
     }
@@ -68,6 +98,7 @@ export class Player {
 
   render(ctx: CanvasRenderingContext2D): void {
     this.drawKickEffect(ctx)
+    this.drawTeleportTrail(ctx)
 
     switch (this.characterType) {
       case 'pixel':
@@ -117,6 +148,18 @@ export class Player {
       ctx.fillStyle = `rgba(255, 200, 50, ${e.opacity * 0.8})`
       ctx.fillRect(px - 2, py - 2, 4, 4)
     }
+  }
+
+  // ============ 瞬移残影 ============
+  private drawTeleportTrail(ctx: CanvasRenderingContext2D): void {
+    if (!this.teleportTrail) return
+    const t = this.teleportTrail
+    ctx.globalAlpha = t.opacity * 0.5
+    ctx.fillStyle = this.color
+    ctx.beginPath()
+    ctx.arc(t.x, t.y, this.radius * 0.6, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.globalAlpha = 1
   }
 
   // ============ 像素小人 ============
@@ -718,7 +761,15 @@ export class Player {
       return { fx: 0, fy: 0 }
     }
 
-    this.kickCooldown = GAME_PARAMS.kickCooldown
+    const dx = ballX - this.x
+    const dy = ballY - this.y
+    const dist = Math.sqrt(dx * dx + dy * dy)
+
+    if (dist === 0) {
+      return { fx: 0, fy: 0 }
+    }
+
+    this.kickCooldown = GAME_PARAMS.kickCooldown * this.stats.kickCooldownMult
 
     this.kickEffect = {
       x: ballX,
@@ -726,14 +777,6 @@ export class Player {
       radius: 5,
       maxRadius: this.radius * 2,
       opacity: 1,
-    }
-
-    const dx = ballX - this.x
-    const dy = ballY - this.y
-    const dist = Math.sqrt(dx * dx + dy * dy)
-
-    if (dist === 0) {
-      return { fx: 0, fy: 0 }
     }
 
     const nx = dx / dist
@@ -776,5 +819,9 @@ export class Player {
     this.kickCooldown = 0
     this.animFrame = 0
     this.kickEffect = null
+    this.burstVx = 0
+    this.burstVy = 0
+    this.teleportTrail = null
+    this.pendingTeleport = null
   }
 }

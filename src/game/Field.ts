@@ -294,11 +294,13 @@ export class Field {
     ctx.fillStyle = color
     ctx.strokeStyle = '#000000'
     ctx.lineWidth = 2
+    const innerRadius = size * 0.4
     ctx.beginPath()
-    for (let i = 0; i < 5; i++) {
-      const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2
-      const x = cx + Math.cos(angle) * size
-      const y = cy + Math.sin(angle) * size
+    for (let i = 0; i < 10; i++) {
+      const angle = (i * Math.PI) / 5 - Math.PI / 2
+      const r = i % 2 === 0 ? size : innerRadius
+      const x = cx + Math.cos(angle) * r
+      const y = cy + Math.sin(angle) * r
       if (i === 0) ctx.moveTo(x, y)
       else ctx.lineTo(x, y)
     }

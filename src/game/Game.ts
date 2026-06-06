@@ -1,5 +1,5 @@
 import type { GameState, Team, CharacterType, GameModeType, SceneType, FieldSize, ColorConfig } from '../types'
-import { GAME_PARAMS, FIELD_RATIO, FIELD_MARGIN, CHARACTER_TYPES, SCENE_TYPES, FIELD_SIZES, CLASSIC_COLORS, CYBER_COLORS, PIXEL_COLORS, POP_COLORS } from './constants'
+import { GAME_PARAMS, FIELD_RATIO, FIELD_MARGIN, CHARACTER_TYPES, CHARACTER_STATS, SCENE_TYPES, FIELD_SIZES, CLASSIC_COLORS, CYBER_COLORS, PIXEL_COLORS, POP_COLORS } from './constants'
 import { Field } from './Field'
 import { Player } from './Player'
 import { Ball } from './Ball'
@@ -49,11 +49,11 @@ export class Game {
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
     this.ctx = canvas.getContext('2d')!
-    this.inputManager = new InputManager()
+    this.inputManager = new InputManager(canvas)
     this.soundManager = new SoundManager()
     this.state = 'modeSelect'
     this.winScore = GAME_PARAMS.defaultWinScore
-    this.playerSpeed = GAME_PARAMS.playerSpeed
+    this.playerSpeed = GAME_PARAMS.speedOptions[0]
 
     this.resize(false)
     this.setupMenuButtons()
@@ -75,6 +75,22 @@ export class Game {
 
   private getEntityScale(): number {
     return FIELD_SIZES.find(f => f.type === this.fieldSize)?.entityScale ?? 1
+  }
+
+  // 获取场地内随机 Y 坐标，避开球门区域
+  private getRandomFieldY(): number {
+    const goalTop = this.field.leftGoal.y
+    const goalBottom = this.field.leftGoal.y + this.field.leftGoal.height
+    const fieldTop = this.field.y
+    const fieldBottom = this.field.y + this.field.height
+    // 将场地分为球门上方、球门区域、球门下方三段，随机选一段取随机 Y
+    const segments: [number, number][] = []
+    if (goalTop > fieldTop) segments.push([fieldTop, goalTop])
+    if (fieldBottom > goalBottom) segments.push([goalBottom, fieldBottom])
+    // 球门区域比场地还大的极端情况，回退到整段
+    if (segments.length === 0) return fieldTop + Math.random() * this.field.height
+    const [segTop, segBottom] = segments[Math.floor(Math.random() * segments.length)]
+    return segTop + Math.random() * (segBottom - segTop)
   }
 
   private resize(isResize: boolean): void {
@@ -151,8 +167,7 @@ export class Game {
       player.radius = pRadius
     }
 
-    const ballY = this.field.y + Math.random() * this.field.height
-    this.ball = new Ball(center.x, ballY, this.getColors(), this.sceneType)
+    this.ball = new Ball(center.x, this.getRandomFieldY(), this.getColors(), this.sceneType)
     this.ball.radius = GAME_PARAMS.ballRadius * scale * eScale
 
     this.scoreManager = new ScoreManager(this.winScore)
@@ -277,7 +292,7 @@ export class Game {
         }
         // 计算按钮位置
         const charCy = cy - 40
-        const charInfoY = this.gameMode === 'trio' ? charCy + 200 : charCy + 150
+        const charInfoY = this.gameMode === 'trio' ? charCy + 240 : charCy + 150
         const charBtnY = charInfoY + 30
         // 下一步按钮
         if (this.hitBtn(mx, my, cx - 70, charBtnY, 140, 40)) {
@@ -384,29 +399,34 @@ export class Game {
 
   private handleInput(): void {
     const eScale = this.getEntityScale()
-    const speed = this.playerSpeed * eScale
+    const baseSpeed = this.playerSpeed * eScale
 
+    const p1 = this.players[0]
     const p1Input = this.inputManager.getPlayerInput('player1')
-    this.players[0].vx = p1Input.vx * speed
-    this.players[0].vy = p1Input.vy * speed
-    if (p1Input.kick) this.tryKick(this.players[0])
+    const p1Speed = baseSpeed * p1.stats.speedMult
+    p1.vx = p1Input.vx * p1Speed
+    p1.vy = p1Input.vy * p1Speed
+    if (p1Input.kick) this.tryKick(p1)
 
     // 玩家2：AI 或 键盘
+    const p2 = this.players[1]
     if (this.gameMode === 'ai' && this.aiController) {
-      const aiInput = this.aiController.update(1, this.players[1], this.ball, this.field, this.field.leftGoal, this.field.rightGoal)
-      this.players[1].vx = aiInput.vx * speed
-      this.players[1].vy = aiInput.vy * speed
-      if (aiInput.kick) this.tryKick(this.players[1], aiInput.kickTarget ?? undefined)
+      const aiInput = this.aiController.update(1, p2, this.ball, this.field, this.field.leftGoal, this.field.rightGoal)
+      const p2Speed = baseSpeed * p2.stats.speedMult
+      p2.vx = aiInput.vx * p2Speed
+      p2.vy = aiInput.vy * p2Speed
+      if (aiInput.kick) this.tryKick(p2, aiInput.kickTarget ?? undefined)
     } else {
       const p2Input = this.inputManager.getPlayerInput('player2')
-      this.players[1].vx = p2Input.vx * speed
-      this.players[1].vy = p2Input.vy * speed
-      if (p2Input.kick) this.tryKick(this.players[1])
+      const p2Speed = baseSpeed * p2.stats.speedMult
+      p2.vx = p2Input.vx * p2Speed
+      p2.vy = p2Input.vy * p2Speed
+      if (p2Input.kick) this.tryKick(p2)
     }
 
     if (this.gameMode === 'trio' && this.players.length >= 3) {
       const p3 = this.players[2]
-      const mouseMaxSpeed = speed * 0.8
+      const mouseMaxSpeed = baseSpeed * p3.stats.speedMult
       const mouseInput = this.inputManager.getMouseInput(p3.x, p3.y, mouseMaxSpeed)
       p3.vx = mouseInput.vx
       p3.vy = mouseInput.vy
@@ -418,8 +438,9 @@ export class Game {
     const dx = this.ball.x - player.x
     const dy = this.ball.y - player.y
     const dist = Math.sqrt(dx * dx + dy * dy)
+    const attractRange = player.stats.attractMult
 
-    if (dist < player.radius + this.ball.radius + 10) {
+    if (dist < player.radius * attractRange + this.ball.radius + 10) {
       if (!player.canKick()) return
 
       // 踢球特效和冷却（通过 player.kick 触发）
@@ -433,23 +454,57 @@ export class Game {
         const tdy = target.y - this.ball.y
         const tDist = Math.sqrt(tdx * tdx + tdy * tdy)
         if (tDist > 0) {
-          const kickForce = GAME_PARAMS.kickForce
-          forceX = (tdx / tDist) * kickForce
-          forceY = (tdy / tDist) * kickForce
+          // 保持速度加成：使用 defaultForce 的总力大小，但改变方向朝目标
+          const forceMag = Math.sqrt(forceX * forceX + forceY * forceY) * player.stats.kickMult
+          forceX = (tdx / tDist) * forceMag
+          forceY = (tdy / tDist) * forceMag
         }
+      } else {
+        forceX *= player.stats.kickMult
+        forceY *= player.stats.kickMult
       }
 
+      // 1. 先踢球，让球飞出去
       this.ball.applyForce(forceX, forceY)
       this.ball.justKicked = 3
       this.ball.lastKickedByTeam = player.team
       this.soundManager.playKick()
+
+      // 2. 忍者特性：踢球后 0.5 秒向移动方向瞬移
+      if (player.characterType === 'ninja') {
+        const teleportDist = player.radius * 8
+        let nx = 0
+        let ny = 0
+        const moveSpeed = Math.sqrt(player.vx * player.vx + player.vy * player.vy)
+        if (moveSpeed > 0.1) {
+          // 键盘玩家：朝移动方向
+          nx = player.vx / moveSpeed
+          ny = player.vy / moveSpeed
+        } else if (player.playerMode === 'mouse') {
+          // 鼠标玩家：朝鼠标光标方向
+          const mdx = this.inputManager.mouseX - player.x
+          const mdy = this.inputManager.mouseY - player.y
+          const mDist = Math.sqrt(mdx * mdx + mdy * mdy)
+          if (mDist > 5) {
+            nx = mdx / mDist
+            ny = mdy / mDist
+          }
+        }
+        if (nx !== 0 || ny !== 0) {
+          player.pendingTeleport = {
+            x: player.x + nx * teleportDist,
+            y: player.y + ny * teleportDist,
+            timer: 500,
+          }
+        }
+      }
     }
   }
 
   private handleCollisions(): void {
     for (const player of this.players) {
-      if (Physics.playerBallCollision(player, this.ball)) {
-        Physics.resolvePlayerBallCollision(player, this.ball)
+      if (Physics.playerBallCollision(player, this.ball, player.stats.attractMult)) {
+        Physics.resolvePlayerBallCollision(player, this.ball, player.characterType === 'cat')
       }
     }
 
@@ -485,8 +540,7 @@ export class Game {
 
     // 立即把球移到中线随机位置，防止重复触发
     const center = this.field.getCenter()
-    const ballY = this.field.y + Math.random() * this.field.height
-    this.ball.reset(center.x, ballY)
+    this.ball.reset(center.x, this.getRandomFieldY())
   }
 
   private resetPositions(): void {
@@ -503,8 +557,7 @@ export class Game {
       this.players[1].reset(center.x + playerOffset, center.y)
     }
 
-    const ballY = this.field.y + Math.random() * this.field.height
-    this.ball.reset(center.x, ballY)
+    this.ball.reset(center.x, this.getRandomFieldY())
   }
 
   // ============ 渲染 ============
@@ -622,6 +675,7 @@ export class Game {
     const colors = this.getColors()
 
     const winner = this.scoreManager.getWinner()
+    if (!winner) return
     const winnerName = winner === 'red' ? '红队 🔴' : '蓝队 🔵'
     const winnerColor = winner === 'red' ? colors.player1 : colors.player2
 
@@ -710,7 +764,7 @@ export class Game {
     ctx.fillText('⏸ 暂停', this.canvas.width / 2, this.canvas.height / 2)
 
     ctx.font = '18px "Segoe UI", "Microsoft YaHei", sans-serif'
-    ctx.fillText('按 P 继续 | ESC 返回菜单', this.canvas.width / 2, this.canvas.height / 2 + 40)
+    ctx.fillText('按 P 或 ESC 继续游戏', this.canvas.width / 2, this.canvas.height / 2 + 40)
   }
 
   // ============ 页面1：模式选择 ============
@@ -805,9 +859,17 @@ export class Game {
       this.drawCharButton(ctx, btn, btn.value === this.player1Char, colors.player1)
       Player.drawPreview(ctx, btn.x, btn.y + 2, 16, btn.value as CharacterType, 'red', colors)
     }
+    ctx.font = '12px "Segoe UI", "Microsoft YaHei", sans-serif'
+    ctx.fillStyle = '#ffffff88'
+    ctx.textAlign = 'center'
+    ctx.fillStyle = '#FFD54F'
+    ctx.fillText(CHARACTER_STATS[this.player1Char].description, cx - 200 + (50 * 7 + 10 * 6) / 2, p1LabelY + 50 + 28)
 
     // 玩家2 / AI
     const p2LabelY = p1LabelY + playerSectionHeight
+    const charAreaWidth = 50 * 7 + 10 * 6  // charBtnSize * 7 + charGap * 6
+    const statsX = cx - 200 + charAreaWidth / 2
+
     if (this.gameMode === 'ai') {
       ctx.fillStyle = colors.player2
       ctx.font = 'bold 16px "Segoe UI", "Microsoft YaHei", sans-serif'
@@ -817,6 +879,10 @@ export class Game {
         this.drawCharButton(ctx, btn, btn.value === this.player2Char, colors.player2)
         Player.drawPreview(ctx, btn.x, btn.y + 2, 16, btn.value as CharacterType, 'blue', colors)
       }
+      ctx.font = '12px "Segoe UI", "Microsoft YaHei", sans-serif'
+      ctx.fillStyle = '#FFD54F'
+      ctx.textAlign = 'center'
+      ctx.fillText(CHARACTER_STATS[this.player2Char].description, statsX, p2LabelY + 50 + 28)
     } else {
       const p2color = this.gameMode === 'trio' ? colors.player1 : colors.player2
       const p2label = this.gameMode === 'trio' ? '🔴 玩家2 红队 (键盘)' : '🔵 玩家2 蓝队 (键盘)'
@@ -829,6 +895,10 @@ export class Game {
         const team = this.gameMode === 'trio' ? 'red' : 'blue'
         Player.drawPreview(ctx, btn.x, btn.y + 2, 16, btn.value as CharacterType, team as Team, colors)
       }
+      ctx.font = '12px "Segoe UI", "Microsoft YaHei", sans-serif'
+      ctx.fillStyle = '#FFD54F'
+      ctx.textAlign = 'center'
+      ctx.fillText(CHARACTER_STATS[this.player2Char].description, statsX, p2LabelY + 50 + 28)
     }
 
     // 玩家3（三人模式）
@@ -842,10 +912,14 @@ export class Game {
         this.drawCharButton(ctx, btn, btn.value === this.player3Char, colors.player2)
         Player.drawPreview(ctx, btn.x, btn.y + 2, 16, btn.value as CharacterType, 'blue', colors)
       }
+      ctx.font = '12px "Segoe UI", "Microsoft YaHei", sans-serif'
+      ctx.fillStyle = '#FFD54F'
+      ctx.textAlign = 'center'
+      ctx.fillText(CHARACTER_STATS[this.player3Char].description, statsX, p3LabelY + 50 + 28)
     }
 
     // 操作说明
-    const infoY = this.gameMode === 'trio' ? cy + 200 : cy + 150
+    const infoY = this.gameMode === 'trio' ? cy + 240 : cy + 150
     ctx.font = '13px "Segoe UI", "Microsoft YaHei", sans-serif'
     ctx.fillStyle = '#ffffffaa'
     ctx.textAlign = 'center'
@@ -1031,10 +1105,8 @@ export class Game {
       }
     } else if (this.state === 'paused') {
       this.canvas.style.cursor = 'default'
-      if (this.inputManager.isJustPressed('KeyP')) this.state = 'playing'
-      if (this.inputManager.isJustPressed('Escape')) {
-        this.state = 'modeSelect'
-        this.setupMenuButtons()
+      if (this.inputManager.isJustPressed('KeyP') || this.inputManager.isJustPressed('Escape')) {
+        this.state = 'playing'
       }
     }
   }

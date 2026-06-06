@@ -133,3 +133,12 @@ export interface Score {
   red: number
   blue: number
 }
+
+// 人物属性
+export interface CharacterStats {
+  speedMult: number       // 移动速度倍率
+  kickMult: number        // 踢球力度倍率
+  kickCooldownMult: number // 踢球冷却倍率
+  attractMult: number     // 吸球范围倍率
+  description: string     // 特性说明
+}

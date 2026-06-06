@@ -1,4 +1,4 @@
-import type { ColorConfig, ControlConfig, GameParams, CharacterType, SceneType, FieldSize } from '../types'
+import type { ColorConfig, ControlConfig, GameParams, CharacterType, SceneType, FieldSize, CharacterStats } from '../types'
 
 export interface CharacterConfig {
   type: CharacterType
@@ -7,32 +7,24 @@ export interface CharacterConfig {
 }
 
 export const CHARACTER_TYPES: CharacterConfig[] = [
-  { type: 'pixel',    label: '像素', description: '经典像素小人' },
-  { type: 'circle',   label: '圆形', description: '简洁圆形球员' },
-  { type: 'robot',    label: '机器人', description: '方块机器人' },
-  { type: 'ninja',    label: '忍者', description: '黑衣忍者' },
-  { type: 'cat',      label: '猫猫', description: '可爱猫咪' },
-  { type: 'alien',    label: '外星人', description: '绿色外星人' },
-  { type: 'stickman', label: '火柴人', description: '经典火柴人' },
+  { type: 'pixel',    label: '像素', description: '速度最快，踢球较弱' },
+  { type: 'circle',   label: '圆形', description: '均衡全能，没有短板' },
+  { type: 'robot',    label: '机器人', description: '踢球最猛，移动较慢' },
+  { type: 'ninja',    label: '忍者', description: '踢球瞬间爆发加速' },
+  { type: 'cat',      label: '猫猫', description: '转向灵活，操控性好' },
+  { type: 'alien',    label: '外星人', description: '吸球范围更大' },
+  { type: 'stickman', label: '火柴人', description: '出脚最快，连踢利器' },
 ]
 
-// 颜色配置
-export const COLORS: ColorConfig = {
-  fieldDark:   '#2E7D32',
-  fieldLight:  '#388E3C',
-  lines:       '#FFFFFF',
-  background:  '#1A1A2E',
-  goal:        '#FFC107',
-  goalNet:     '#FFE082',
-  player1:     '#F44336',
-  player2:     '#2196F3',
-  playerStroke: '#FFFFFF',
-  arrowColor:  '#FFFFFF',
-  trailOpacity: 0.4,
-  ball:        '#FFFFFF',
-  ballPattern: '#333333',
-  text:        '#FFFFFF',
-  scoreBg:     'rgba(0,0,0,0.5)',
+// 人物属性配置
+export const CHARACTER_STATS: Record<CharacterType, CharacterStats> = {
+  pixel:    { speedMult: 1.15, kickMult: 0.55, kickCooldownMult: 1.0,  attractMult: 1.0,  description: '移速+15%，踢力-45%' },
+  circle:   { speedMult: 1.0,  kickMult: 1.0,  kickCooldownMult: 1.0,  attractMult: 1.0,  description: '全能均衡，没有短板' },
+  robot:    { speedMult: 0.85, kickMult: 6.0,  kickCooldownMult: 1.0,  attractMult: 1.0,  description: '移速-15%，超级脚力' },
+  ninja:    { speedMult: 1.0,  kickMult: 1.0,  kickCooldownMult: 1.0,  attractMult: 1.0,  description: '踢球后向踢球方向冲刺' },
+  cat:      { speedMult: 1.0,  kickMult: 1.0,  kickCooldownMult: 1.0,  attractMult: 1.0,  description: '操控性极佳' },
+  alien:    { speedMult: 1.0,  kickMult: 1.0,  kickCooldownMult: 1.0,  attractMult: 1.4,  description: '吸球范围+40%' },
+  stickman: { speedMult: 1.0,  kickMult: 0.9,  kickCooldownMult: 0.5,  attractMult: 1.0,  description: '冷却-50%，连踢利器' },
 }
 
 // 操控配置
